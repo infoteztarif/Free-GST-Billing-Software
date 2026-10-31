@@ -117,7 +117,17 @@ async function dismissFirstRun(page) {
     const hasNav = await page.evaluate(() => !!document.querySelector('.nav-btn'));
     if (hasNav && !(await blockingOverlay())) return;
     let clicked = false;
+    // The first wizard's icon-only close control exposes its purpose through
+    // title/aria-label, while the second screen has a visible text button.
+    // Prefer the explicit control so a same-named hidden button cannot win.
+    const explicitSkip = page.locator('button[aria-label*="Skip setup" i], button[title*="Skip setup" i]:visible');
+    if (await explicitSkip.count()) {
+      await explicitSkip.first().click({ timeout: 5000 }).catch(() => {});
+      await sleep(1200);
+      clicked = true;
+    }
     for (const pattern of [/^skip setup$/i, /none of these/i, /get started/i, /continue|finish|close/i]) {
+      if (clicked) break;
       const btn = page.getByRole('button', { name: pattern });
       if (await btn.count()) {
         await btn.first().click({ timeout: 5000 }).catch(() => {});
